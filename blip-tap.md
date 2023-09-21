@@ -32,18 +32,18 @@ License: CC0
       * [tap_htlc_sigs](#tap_htlc_sigs)
       * [tap_onion_rfq_id](#tap_onion_rfq_id)
     * [Channel Funding](#channel-funding)
-    * [`tx_asset_proof` Message](#`tx_asset_proof`-message)
-      * [`open_channel` Extensions](#`open_channel`-extensions)
-      * [`accept_channel` Extensions](#`accept_channel`-extensions)
-      * [`funding_created` Extensions](#`funding_created`-extensions)
-      * [`funding_accepted` Extensions](#`funding_accepted`-extensions)
+    * [`tx_asset_proof` Message](#tx_asset_proof-message)
+      * [`open_channel` Extensions](#open_channel-extensions)
+      * [`accept_channel` Extensions](#accept_channel-extensions)
+      * [`funding_created` Extensions](#funding_created-extensions)
+      * [`funding_accepted` Extensions](#funding_accepted-extensions)
       * [Funding Output Construction](#funding-output-construction)
     * [Cooperative Closure](#cooperative-closure)
-      * [`closing_signed` Extensions](#`closing_signed`-extensions)
+      * [`closing_signed` Extensions](#closing_signed-extensions)
       * [Requirements](#requirements)
     * [Channel Operation](#channel-operation)
-      * [`update_add_htlc` Extensions](#`update_add_htlc`-extensions)
-      * [`commitment_signed` Extensions](#`commitment_signed`-extensions)
+      * [`update_add_htlc` Extensions](#update_add_htlc-extensions)
+      * [`commitment_signed` Extensions](#commitment_signed-extensions)
     * [Commitment Transaction Construction](#commitment-transaction-construction)
       * [To Local Outputs](#to-local-outputs)
       * [To Remote Outputs](#to-remote-outputs)
@@ -55,12 +55,12 @@ License: CC0
         * [HTLC-Timeout Transactions](#htlc-timeout-transactions)
     * [Last Mile Routing](#last-mile-routing)
       * [RFQ Negotiation](#rfq-negotiation)
-        * [Request For Quote (`tap_rfq`)](#request-for-quote-(`tap_rfq`))
+        * [Request For Quote (`tap_rfq`)](#request-for-quote-tap_rfq)
           * [Requirements](#requirements)
-      * [Request For Quote Response (`tap_rfq_accept`) + (`tap_rfq_reject`)](#request-for-quote-response-(`tap_rfq_accept`)-+-(`tap_rfq_reject`))
-      * [Accepting Quotes  (`tap_rfq_accept`)](#accepting-quotes--(`tap_rfq_accept`))
+      * [Request For Quote Response (`tap_rfq_accept`) + (`tap_rfq_reject`)](#request-for-quote-response-tap_rfq_accept--tap_rfq_reject)
+      * [Accepting Quotes  (`tap_rfq_accept`)](#accepting-quotes--tap_rfq_accept)
         * [Requirements](#requirements)
-      * [Rejecting Quotes  (`tap_rfq_reject`)](#rejecting-quotes--(`tap_rfq_reject`))
+      * [Rejecting Quotes  (`tap_rfq_reject`)](#rejecting-quotes--tap_rfq_reject)
         * [Requirements](#requirements)
       * [First Hop TAP HTLC Onion Processing](#first-hop-tap-htlc-onion-processing)
       * [Last Hop TAP HTLC Onion Processing](#last-hop-tap-htlc-onion-processing)
@@ -74,25 +74,25 @@ License: CC0
 ## Abstract
 
 This document describes a variant on the modern "simple taproot channels" that
-also supports holding an transferring assets created by the Taproot Assets
+also supports holding and transferring assets created by the Taproot Assets
 Protocol. As Taproot Assets are built on top of the taproot itself, from the
-PoV of the taproot channel format, Taproot Assets manifests entirely as an
-extra tapscript sibling placed in the tapscript tee of relevant outputs. A set
-of asset-specific balances (in the form of taproot asset tree commitments) are
+PoV of the taproot channel format, Taproot Assets manifest entirely as an
+extra tapscript sibling placed in the tapscript tree of relevant outputs. A set
+of asset-specific balances (in the form of Taproot Asset tree commitments) are
 maintained as an overlay layer on top of the normal initiator+responder
 balances of Lightning channels. For channel state transitions and eventual
 on-chain contract claims, in addition to normal taproot witnesses, a set of
-taproot asset level witnesses are also exchanged, encumbered by a nested
+Taproot Asset level witnesses are also exchanged, encumbered by a nested
 iteration of the current Tapscript VM, the Taproot Assets VM.
 
 In order to facilitate multi-hop payments of the existing LN using Taproot
 Assets edge liquidity, an RFQ (Request For Quote) last-mile negotiation scheme
 is used to lock in an exchange rate for both incoming and outgoing payments by
-liquidity providers. Tendered quotes `(asset_id, volume, price)`are identified
-by a cryptographic hash and scid-like sequence number, and ephemerally expire
+liquidity providers. Tendered quotes `(asset_id, volume, price)` are identified
+by a cryptographic hash and SCID-like sequence number, and ephemerally expire
 in order to reduce exchange rate risk. The existing BOLT 11 invoice format is
-used verbatim, in a manner that allows a receiver to accept an taproot asset
-without burdening the sender with up to date knowledge of exchange rates.
+used verbatim, in a manner that allows a receiver to accept a Taproot Asset
+without burdening the sender with up-to-date knowledge of exchange rates.
 
 ## Copyright
 
@@ -101,7 +101,7 @@ This bLIP is licensed under the CC0 license.
 ## Motivation
 
 The Lightning Network is the world's first open, fully-collateralized
-decentralized payment system.  The Lightning system is globally adopted around
+decentralized payment system. The Lightning system is globally adopted around
 the world and is used for: machine to machine payments, remittances,
 e-commerce, donations, tipping and more. As the LN is built on top of the
 Bitcoin blockchain, it uses bitcoin as its primary unit of account to send and
@@ -118,9 +118,9 @@ volume, thereby increasing investment in the system, and providing active
 network routers with a new revenue source. One such potential asset includes
 stablecoins, which at the time of writing have a market cap of nearly $100
 billion. By enabling stablecoins to be sent and received at the edge of the
-network, the utility of the Lightning Network increase, as LN effectively
+network, the utility of the Lightning Network increases, as LN effectively
 becomes the monetary backbone of the digital age with participants transacting
-in arbitrary asset at the edges, transported through the network by the
+in arbitrary assets at the edges, transported through the network by the
 bitcoin liquidity backbone.
 
 ## Preliminaries
@@ -131,18 +131,18 @@ notation that'll be used later in the core channel specification.
 
 ### Merkle-Sum Sparse Merkle Trees
 
-A sparse merkle tree is an merkalized authenticated data structure that maps a
+A sparse merkle tree is a merkalized authenticated data structure that maps a
 `256-bit` value to an arbitrary set of bytes. A merkle-sum tree creates a
 merkle-set by simulating a merkle tree of depth `N` (256 in this case). As such
 a tree has 256 leaves, the entire range of the `sha256` hash function can be
 uniquely located amongst the set of leaves. The tree initially starts as an
 empty tree with a known "empty hash" value for the lowest level. Given this
 value, the empty hash value for each level of the tree can be pre-computed and
-known. Levering this feature, succinct proof of exclusion for a certain key can
-be produced by showing that the designate leaf is actually the empty hash.
+known. Leveraging this feature, succinct proof of exclusion for a certain key
+can be produced by showing that the designated leaf is actually the empty hash.
 Compared to a normal merkle tree, an SMT is able to achieve succinct proofs of
 exclusion, as the set of leaves is already pre-sorted, and the tree requires
-no rebalancing.
+no re-balancing.
 
 A merkle-sum sparse merkle tree builds on the SMT data structure with the
 addition of augmented leaves and branches. In addition to a key-location, and a
@@ -174,7 +174,7 @@ tagged_hash("TapLeaf", leaf_version || taproot_asset_marker || taproot_asset_ver
 #### Asset Creation & Asset IDs
 
 Asset IDs in the protocol are uniquely generated by leveraging the chain
-invariant enforced by BIP 34 wherein a `txid` account be repeated multiple
+invariant enforced by BIP 34 wherein a `txid` cannot be repeated multiple
 times in a valid chain. For a given asset, an `asset_id` is generated as: 
 ```
 sha256(genesis_outpoint || sha256(asset_tag) || asset_meta_hash || output_index || asset_type)
@@ -186,9 +186,9 @@ globally unique identifier that can be used to easily identify a given asset.
 
 #### Taproot Assets VM
 
-The asset TLV of a taproot asset includes a special `script_key` field. This
+The asset TLV of a Taproot Asset includes a special `script_key` field. This
 `script_key` is derived according to the rules defined in BIP-341 and 342. In
-other woods, the initial version of the Taproot Assets VM is actually a
+other words, the initial version of the Taproot Assets VM is actually a
 _nested_ instantiation of the _Tapscript_ VM. In order to spend an asset, a
 holder generates a valid witness first mapping the set of input+output asset
 UTXOs into a special virtual transaction format, with the witness being
@@ -202,8 +202,8 @@ outputs, commitment outputs, and also HTLCs. Future versions of the VM will
 also permit additional expressibility in the form of more advanced contracting
 primitives such as covenants, and STARKs.
 
-When combined with the Taproot Assets Tree format, the system allows an
-affectively unbounded amount of assets to be transferred in a single transaction.
+When combined with the Taproot Assets tree format, the system allows an
+effectively unbounded amount of assets to be transferred in a single transaction.
 
 #### Asset Splits
 
@@ -212,7 +212,8 @@ merged. When splitting an asset, in order to ensure that the supply of an asset
 is conserved (no inflation occurred) any resulting UTXOs created from the
 source UTXO are inserted into a special MS-SMT tree dubbed a
 `split_commitment`. A "root" asset is designated which holds the root hash of
-the `split_commitment`. Any splits that were created from the root asset 
+the `split_commitment`. Any splits that were created from the root asset are
+committed into the split commitment tree.
 
 This design enables a verifier to easily verify that an asset's supply wasn't
 inflated by verifying that the `(asset_id, amt)` of the input asset is exactly
@@ -223,7 +224,7 @@ asset.
 
 ### Anchoring TAP Assets in the Funding Transaction
 
-As the Taproot Assets protocol is a overlay system on top of the Taproot script
+As the Taproot Assets protocol is an overlay system on top of the Taproot script
 template, the impact of Taproot Assets on the Simple Taproot Assets channel
 type is minimal. At a high level, one can bind Taproot Assets to a given P2TR
 output simply by including the asset tree root commitment within the committed
@@ -233,7 +234,7 @@ valid witness data) in the outputs.
 
 For the funding transaction, the musig2 mapping is inherited onto the TAP
 layer: the same set of musig2 keys are re-used, with the sighash being signed
-one that's derived from the TAP virtual transaction for the commitment
+on that's derived from the TAP virtual transaction for the commitment
 transaction.
 
 ### Modified Taproot Asset Scripts
@@ -245,12 +246,12 @@ HTLC script onto the TAP layer, we ensure that the TAP assets can only be
 unilaterally moved under the same conditions as normal HTLCs. This contract
 mirroring also applies to the second level HTLC construct as well.
 
-Similarly, the set of revocation scripts and semantic are also lifted up to the
-TAP layer. In the case of a breach transaction, then TAP assets into addition
-to BTC are also forfeited to the defender.
+Similarly, the set of revocation scripts and semantic are also lifted to the
+TAP layer. In the case of a breach transaction, the TAP assets in addition
+to the BTC are also forfeited to the defender.
 
-Anchor outputs are the only output type that doesn't inherit any semantics from
-the TAP layer. They operate as normal and allow CPFP fee bumping, just like
+Anchor outputs are the only type of outputs that doesn't inherit any semantics
+from the TAP layer. They operate as normal and allow CPFP fee bumping, just like
 with the normal zero fee anchors channel type.
 
 Given that the TAP layer is anchored on the Bitcoin layer, BTC is used as
@@ -267,18 +268,18 @@ current dust limit.
 
 For the multi-hop layer, the existing LN invoicing scheme is mostly unchanged.
 In order to cross pairs for a route at the outgoing link, incoming link, or
-both an RFQ-based negotiation scheme is used between the initiating/resewing
+both, an RFQ-based negotiation scheme is used between the initiating/receiving
 node and their direct liquidity proving peer. For the outgoing link, the
 accepted RFQ quote is identified by the hash of the signed RFQ quote. For the
 final receiver hop, the utilized quota in the quote is represented by a special
-scid, that resembles the existing scid alias feature. 
+SCID, that resembles the existing SCID alias feature. 
 
 ### Decoupled Multi-Hop Multi-Asset Payments
 
-By piggy backing on the existing onion hop payload space, we enable upgraded
+By piggybacking on the existing onion hop payload space, we enable upgraded
 senders to send BTC with the receiver receiving their asset of choice without
 burdening them with exchange rate information. The invoice only requests a BTC
-amount, which is derived via the latest tendered quote between the resewing
+amount, which is derived via the latest tendered quote between the receiving
 node and their liquidity provider. If the sender is sending with a TAP asset of
 their own, then the payload the construct must respect the latest accepted
 quote by their outgoing liquidity provider to cross into the BTC backbone of the
@@ -300,10 +301,10 @@ and routing fee revenue.
 
 ### Feature Bits 
 
-* new feature bit and channel tyep
+* new feature bit and channel type
   * both even
-  * new chan type TLV and node ann level feature bit as well (can seek out
-    those to open asset chans with)
+  * new channel type TLV and node announcement level feature bit as well (can
+    seek out those to open asset channels with)
 
 Inheriting the structure put forth in BOLT 9, we define a new feature bit to be
 placed in the `init` message, `node_announcement` and also
@@ -443,7 +444,7 @@ asset leaves revealed in the prior `tx_asset_proof` messages.
 **Requirements**
 The sending node:
 
-* MUST set the `tap_asset_root` to the final TAp asset root hash+sum created by
+* MUST set the `tap_asset_root` to the final TAP asset root hash+sum created by
   inserting each of the specified asset UTXOs into a TAP tree according to
   `bip-tap.mediawiki`
 * MUST NOT send any further `tap_asset_proof` messages after `open_channel` has
