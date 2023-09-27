@@ -551,12 +551,11 @@ the funding output is constructed as follows:
   1. Initialize an empty TAP asset tree dubbed `tap_asset_tree`
 
   2. For each `tap_input_leaf`:
+     1. If a TAP asset commitment for specified `asset_id` does not exist, then
+     initialize an empty instance as a sub-tree within `tap_asset_tree`.
 
-    1a. If a TAP asset commitment for specified `asset_id` does not exist, then
-    initialize an empty instance as a sub-tree within `tap_asset_tree`.
-
-    1b. Insert the `tap_input_leaf` into the TAP asset commitment retrived or
-    initialized above.
+     2. Insert the `tap_input_leaf` into the TAP asset commitment retrived or
+     initialized above.
 
   3. Generate the serialized `tagged_hash` TAP root commitment as specified in
      the Taproot Assets Protocol section in the top-level Preliminary section,
@@ -644,13 +643,13 @@ HTLC transactions:
 
 1. `tlv_stream`: `commitment_signed_tlvs`
 2. types:
-       1. type: ? (`tap_partial_signature_with_nonce`)
-       2. data:
-          * [`98*byte`: `partial_signature || public_nonce`]
-       1. type: ? 
-       2. data:
-          * [`BigSize`:`num_sigs`]
-          * [`num_sigs*64`:`htlc_sigs`]
+   1. type: ? (`tap_partial_signature_with_nonce`)
+   2. data:
+      * [`98*byte`: `partial_signature || public_nonce`]
+   1. type: ? 
+   2. data:
+      * [`BigSize`:`num_sigs`]
+      * [`num_sigs*64`:`htlc_sigs`]
 
 ### Commitment Transaction Construction 
 
@@ -688,29 +687,26 @@ tap_to_local_output_key = taproot_nums_point + tagged_hash("TapTweak", taproot_n
 To derive the `tap_to_local_script_root`:
 
 1. For each `asset_id`, `a_i` committed to in the `tap_funding_output`:
-     1. Create a new TAP TLV leaf template for `asset_id`, `a_i` based on the input
-    multi-sig root.
-     2. Modify the `amt` field to match the current settled balance of the initiator.
-     3. If the responder has an active balance or active HTLCs exist:
-    *  3a. Initialize a new empty split commitment. For each active `asset_id` in
+   1. Create a new TAP TLV leaf template for `asset_id`, `a_i` based on the input
+      multi-sig root.
+   2. Modify the `amt` field to match the current settled balance of the initiator.
+   3. If the responder has an active balance or active HTLCs exist:
+      1. Initialize a new empty split commitment. For each active `asset_id` in
          flight, or held in settled balance:
-           * 3a_i. Create a new TLV leaf clone, with the amount set to the
-             active balance of the responder, then insert this into the split
-             commitment tree.
-
-           * 3a_ii. For each active HTLC, create a new TLV leaf clone and insert
-             that into the split commitment tree for the initiator's.
-
-           * 3a_iii. Compile the split commitment to obtain the
-             `split_commitment_root` for the asset, populating the
-             corresponding asset TLV field in the root split asset.
-
-     4. Using the `tap_partial_signature` exchanged in the prior round, create the
-    final combined signature, then set that as the witness. 
-     5. For each created split, create the final split commitment root hash,
-    replace the value in the asset TLV, then update the inclusion proofs for
-    all the commitment + HTLC splits.
-     6. Collect the root commitment for `a_i` in a temporary variable `c_a_i`
+         1. Create a new TLV leaf clone, with the amount set to the
+            active balance of the responder, then insert this into the split
+            commitment tree.
+         2. For each active HTLC, create a new TLV leaf clone and insert
+            that into the split commitment tree for the initiator's.
+         3. Compile the split commitment to obtain the
+            `split_commitment_root` for the asset, populating the
+            corresponding asset TLV field in the root split asset.
+   4. Using the `tap_partial_signature` exchanged in the prior round, create the
+      final combined signature, then set that as the witness. 
+   5. For each created split, create the final split commitment root hash,
+      replace the value in the asset TLV, then update the inclusion proofs for
+      all the commitment + HTLC splits.
+   6. Collect the root commitment for `a_i` in a temporary variable `c_a_i`
 2. Given each taproot asset inner commitment `c_a_i`, assemble a final TAP asset
    tree, dubbed `asset_tree_root`.
 3. With the final `asset_tree_root` root commitment output TLV, construct a
@@ -740,15 +736,15 @@ tap_to_remote_script_root = tapscript_root([to_remote_script])
 To derive the `tap_to_remote_script_root`:
 
 1. For each `asset_id`, `a_i` that the responder has a non-zero balance of:
-    1. Create a new TAP TLV leaf for asset ID `a_i` that spends no inputs (it's
-       a split commitment leaf).
-    2. Modify the `amt` field to match the settled balance of the responder.
-    3. Referring to the anchor asset's split commitment root as
-       `split_root_a_i`, generate a valid split commitment witness proof for
-       the asset.
-    4. Construct a valid split commitment witness for the asset
-       `split_witness_i`, populating the asset's witness accordingly.
-    5. Create a new asset commitment tree with the leaf subbed `c_i`.
+   1. Create a new TAP TLV leaf for asset ID `a_i` that spends no inputs (it's
+      a split commitment leaf).
+   2. Modify the `amt` field to match the settled balance of the responder.
+   3. Referring to the anchor asset's split commitment root as
+      `split_root_a_i`, generate a valid split commitment witness proof for
+      the asset.
+   4. Construct a valid split commitment witness for the asset
+      `split_witness_i`, populating the asset's witness accordingly.
+   5. Create a new asset commitment tree with the leaf subbed `c_i`.
 2. Assemble each asset commitment root `c_i` into a final TAP asset tree,
    dubbed `asset_tree_root`.
 3. With the final `asset_tree_root` root commitment output TLV, construct a
@@ -787,10 +783,10 @@ To derive the `tap_htlc_script_root`:
    asset.
 3. Construct a valid split commitment witness for the asset
    `split_witness_htlc_i`, populating the asset's witness accordingly.
-5. Create a new asset commitment tree with the leaf subbed `c_htlc`.
-6. Create a new TAP commitment tree containing only `c_htlc` dubbed
+4. Create a new asset commitment tree with the leaf subbed `c_htlc`.
+5. Create a new TAP commitment tree containing only `c_htlc` dubbed
    `asset_tree_root`.
-3. With the final `asset_tree_root` root commitment output TLV, construct a
+6. With the final `asset_tree_root` root commitment output TLV, construct a
    `tap_htlc_script_root` based on `bip-tap.mediawiki`.
 
 
@@ -818,10 +814,10 @@ To derive the `tap_htlc_script_root`:
    asset.
 3. Construct a valid split commitment witness for the asset
    `split_witness_htlc_i`, populating the asset's witness accordingly.
-5. Create a new asset commitment tree with the leaf subbed `c_htlc`.
-6. Create a new TAP commitment tree containing only `c_htlc` dubbed
+4. Create a new asset commitment tree with the leaf subbed `c_htlc`.
+5. Create a new TAP commitment tree containing only `c_htlc` dubbed
    `asset_tree_root`.
-3. With the final `asset_tree_root` root commitment output TLV, construct a
+6. With the final `asset_tree_root` root commitment output TLV, construct a
 
 ##### HTLC-Success Transactions
 
@@ -891,7 +887,7 @@ by the sent `tap_htlc_signatures`.
 * all reserve requirements still expressed in BTC
   * BTC still needed for channel as still tool for fees
   * given fee rate can compute amt of BTC needed for 483 HTLCs in each direction
-  * not that fdiff from channels today re min channlel size
+  * not that fdiff from channels today re min channel size
 
 ### Last Mile Routing
 
@@ -909,8 +905,8 @@ or a `tap_rfc_hash`. The former is laced in the first hop for an outgoing
 payment with a TAP origin, and the latter placed within the normal onion
 payload for a last-mile hop into a TAP asset.
 
-All quotes are ephemeral and will expire along side the created invoice.
-Epidermal quotes ensure that all sides are able to limit their exposure to
+All quotes are ephemeral and will expire alongside the created invoice.
+Ephemeral quotes ensure that all sides are able to limit their exposure to
 price fluctuations. It's recommended that invoices expire within minutes in
 order to clamp down on price volatility exposure.
 
@@ -934,16 +930,16 @@ p2p message `tap_rfq` is sent with the following structure:
 
 where:
 
-* `rfq_id` is a randomly generate 32-byte value to uniquely identify this RFQ
+* `rfq_id` is a randomly generated 32-byte value to uniquely identify this RFQ
   request
 * `asset_id` is the asset ID of the asset the receiver intends to receive
 * `asset_amt` is the amount of units of said asset
 * `suggested_rate_tick` is the internal unit used for asset conversions. A tick
-  is 1/10000th of a currency unit. It gives us up to 4 decimal places of
+  is 1/10,000th of a currency unit. It gives us up to 4 decimal places of
   precision (0.0001 or 0.01% or 1 bps). As an example, if the BTC/USD rate was
   $61,234.95, then we multiply that by 10,000 to arrive at the `usd_rate_tick`:
   `$61,234.95 * 10000 = 612,349,500`.  To convert back to our normal rate, we
-  decide by `10,000` to arrive back at `$61,234.95`.
+  divide by `10,000` to arrive back at `$61,234.95`.
 
 Given valid `rfq_id`, we then define an `tap_rfq_scid` by taking the last `8`
 bytes of the `rfq_id` and interpreting them as a 64-bit integer. 
@@ -988,7 +984,7 @@ the edge node is willing to observe to move `N` units of asset `asset_id`:
 1. type: ?? (`tap_req_accept`)
 2. data:
      * [`32*byte`:`rfq_id`]
-     * [`BigSize`:`accepted_rate_tick]
+     * [`BigSize`:`accepted_rate_tick`]
      * [`BigSize`:`expiry_seconds`]
      * [`64*byte`:`rfq_sig`]
 
@@ -1078,7 +1074,7 @@ matches the `accepted_rate_tick` of the corresponding `tap_rfc_id`.
 When receiving an incoming onion TLV payload sourced from a TAP channel, the
 receiving node:
 
-- MUST reject the payment if the incoming HLTC is a TAP asset, and the outgoing
+- MUST reject the payment if the incoming HTLC is a TAP asset, and the outgoing
   payload doesn't include a `tap_rfq_id` value.
 
 - MUST reject the payment if `tap_rfq_id` is unknown.
@@ -1087,7 +1083,7 @@ receiving node:
   posted `expiry_seconds` value.
 
 - MUST reject the payment the `amt_to_forward != (amt_asset_incoming * tick *
-  msat_multiplier) / accepted_rate_tick
+  msat_multiplier) / accepted_rate_tick`
 
 where:
 
@@ -1096,7 +1092,7 @@ where:
 
   * `msat_multiplier` is a factor used to scale from `BTC/asset` to
     `msat/asset_id`, this value is constant within the protocol and is derived
-    by multiplying the number of sats per Bitcoin, by the amount of sats in an
+    by multiplying the number of sats per Bitcoin, by the amount of sats in a
     msat: `msat_multiplier = 100_000_000 * 1000 = 100_000_000_000` (100
     billion)
 
@@ -1112,24 +1108,24 @@ where:
 
 #### Last Hop TAP HTLC Onion Processing
 
-In the event that the last hop in a route receive a payload that has an
+In the event that the last hop in a route receives a payload that has a
 `short_channel_id` value that matches a prior accepted `rfq_scid` value, then
 this indicates that the sender is attempting to pay a receiver in the asset
 bound by the `rfq_id` and `rfq_scid`.
 
 Note that we don't require that the sender use any special values other than
-what is already known in the existing protocol. This enables _unupgraded_
+what is already known in the existing protocol. This enables _un-upgraded_
 senders to send BTC, with the receiver obtaining their asset of choice, without
 the sender needing to worry about exchange rates at all.
 
-When receieving an incoming onion payload with a known `rfq_scid` value, the
+When receiving an incoming onion payload with a known `rfq_scid` value, the
 receiver:
 
 - MUST reject the HTLC is `tap_scid` is expired based on the posted
   `expiry_seconds` value
 
 - MUST reject the entire HTLC set if at anytime, the sum of HTLCs (the
-  `amt_to_forward` field) targetting `tap_rfc_scid` eceeds the negotiated
+  `amt_to_forward` field) targeting `tap_rfc_scid` exceeds the negotiated
   `asset_amt` field (volume for quote exhausted)
 
 - MUST extend a TAP HTLC with an `asset_id` corresponding to the accepted
@@ -1145,10 +1141,9 @@ receiver:
         * `amt_to_forward = ((1_633_054_326 * 612_349_500) // 100_000_000_000) / 10_000`
         * `amt_to_forward = ((999999999998937000) // 100_000_000_000) / 10_000`
         * `amt_to_forward = (9999999 / 10_000)`
-        * `amt_to_forward = (9999999 / 10_000)`
         * `amt_to_forward = 999.9`
     * Note that all assets internally are accounted in a unit of a `tick`
-      (1/1000th) of an asset. When convering back to the main asset, the value
+      (1/1000th) of an asset. When converting back to the main asset, the value
       should be rounded up, giving us the original value of `$1000`.
 
 
@@ -1180,11 +1175,10 @@ terms of _BTC_ rather than the asset tick. As an example:
       * `invoice_amt = (asset_amt * tick * msat_multiplier) / accepted_rate_tick`
       * `invoice_amt = (100 * 10_000 * 100_000_000_000) / 612_349_500`
       * `invoice_amt = (100000000000000000) / 612_349_500`
-      * `invoice_amt = (100000000000000000) / 612_349_500`
       * `invoice_amt = 163305432 mSAT`
       * `invoice_amt = 163305 SAT`
     
-Always expressing the invoice amount in BTC/mSAT ensures that unpugraded
+Always expressing the invoice amount in BTC/mSAT ensures that un-upgraded
 senders will be able to send over these asset channels.
 
 
